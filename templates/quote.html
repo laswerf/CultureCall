@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Trade
+{% endblock %}
+
+{% block main %}
+    <h1>{{ mktTitle }}</h1>
+    <h2>Price: {{ pts(mktPrice) }}</h2>
+    <form action="/trade" method="post">
+        <label>
+            <input type="radio" name="action" title="Buy" value="BUY">Buy
+        </label>
+        <label>
+            <input type="radio" name="action" title="Sell" value="SELL">Sell
+        </label>
+        <input type="number" step="0.01" name="price" placeholder="Target Price"><abbr title="If you want to buy at any price, just set the price high and it will buy the lowest avaliable.">Help</abbr>
+        <input type="number" name="amount" placeholder="Shares Amount">
+        <button type="submit">Submit</button>
+    </form>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+{% block title %}
+    Trade
+{% endblock %}
+
+{% block main %}
+    <h1>Trade Markets</h1>
+    <div class="quote-container autocomplete-container">
+        <input type="text" id="quote-input" placeholder="Market Name" autocomplete="off" autofocus>
+        <div id="suggestions-quote" class="suggestions-hidden"></div>
+    </div>
+    <script src="{{ url_for('static', filename='js/trade.js') }}"></script>
+{% endblock %} 

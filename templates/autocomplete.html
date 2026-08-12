@@ -1,0 +1,5 @@
+{% for market in markets %}
+    <a href="/trade?market={{ market['title'] }}">
+        <button type="button">{{ market["title"] }}</button>
+    </a>
+{% endfor %}

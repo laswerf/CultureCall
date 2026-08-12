@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+
+{% block title %} 
+    Portfolio
+{% endblock %}
+
+{% block main %}
+    <div id="pointsdiv">
+        <h2 id="points">Points (Bank): {{ points }}</h2>
+    </div>
+    <hr>
+    <h2>Portfolio</h2>
+    <br>
+    <table>
+        <tr>
+            <th>Market</th>
+            <th>Shares</th>
+            <th>Price</th>
+            <th>Value</th>
+        </tr>
+    {% for position in portfolio %}
+        <tr>
+            <td>{{ mktName(position["marketId"]) }}</td>
+            <td>{{ position["sharesCount"] }}</td>
+            <td>{{ pts(price(position["marketId"])) }}</td>
+            <td>{{ pts(price(position["marketId"]) * position["sharesCount"]) }}</td>
+        </tr>
+    {% endfor %}
+    </table>
+    <hr>
+    <h2>Open Orders</h2>
+    <table>
+        <tr>
+            <th>Market</th>
+            <th>Shares</th>
+            <th>Side</th>
+            <th>Price</th>
+            <th>Value if Closed</th>
+        </tr>
+    {% for position in open %}
+        <tr>
+            <td>{{ mktName(position["marketId"]) }}</td>
+            <td>{{ position["sharesCount"] }}</td>
+            <td>{{ position["side"] }}</td>
+            <td>{{ pts(position["limitPrice"]) }}</td>
+            <td>{{ pts(position["limitPrice"] * position["sharesCount"]) }}</td>
+        </tr>
+    {% endfor %}
+    </table>
+{% endblock %}
