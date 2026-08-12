@@ -19,4 +19,15 @@
         <input type="number" name="amount" placeholder="Shares Amount">
         <button type="submit">Submit</button>
     </form>
+    {% if left > 0 %}
+        IPO shares left: {{ left }}
+        IPO selling price: {{ ipo }}
+    {% else %}
+        {% if lowestSeller %}
+        <h3>Lowest seller (bid): {{ pts(lowestSeller) }}</h3>
+        {% endif %}
+        {% if highestBuyer %}
+        <h3>Highest buyer (ask): {{ pts(highestBuyer) }}</h3>
+        {% endif %}
+    {% endif %}
 {% endblock %}

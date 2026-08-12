@@ -67,7 +67,7 @@ def refreshOrders(marketId):
     def continueRefresh():
         lowestSeller = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='SELL' ORDER BY createdAt DESC LIMIT 1", marketId)
         highestBuyer = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='BUY' ORDER BY createdAt DESC LIMIT 1", marketId)
-
+        print(left, ipo, highestBuyer)
         if left > 0 and highestBuyer and highestBuyer[0] and ipo <= highestBuyer[0]["limitPrice"]:
             buyer = highestBuyer[0]
             shares = min(left, buyer["sharesCount"])
@@ -175,7 +175,24 @@ def index():
     balance = db.execute("SELECT points FROM users WHERE id = ?", session["user_id"])[0]["points"]
     portfolio = db.execute("SELECT * FROM portfolio WHERE userId = ?", session["user_id"])
     open = db.execute("SELECT * FROM liveOrders WHERE initiatorId = ?", session["user_id"])
-    return render_template("index.html", points=pts(balance), portfolio=portfolio, open=open, price=getMarketPrice, pts=pts, mktName=getMarketName)
+    history = db.execute("SELECT * FROM history WHERE sellerId = ? OR buyerId = ? ORDER BY executeTime DESC", session["user_id"], session["user_id"])
+    print(history)
+    for transaction in history:
+        if transaction["sellerId"] == session["user_id"]:
+            transaction["side"] = "Sell"
+        else:
+            transaction["side"] = "Buy"
+        transaction["market"] = db.execute("SELECT * FROM markets WHERE id = ?", transaction["marketId"])[0]["title"]
+    return render_template("index.html", points=pts(balance), portfolio=portfolio, open=open, price=getMarketPrice, pts=pts, mktName=getMarketName, history=history)
+
+@app.route("/cancel", methods=["POST"])
+@login_required
+def cancel():
+    market = request.form.get("market")
+    db.execute("BEGIN IMMEDIATE TRANSACTION")
+    db.execute("DELETE FROM liveOrders WHERE (initiatorId = ?) AND marketId = ?", session["user_id"], market)
+    db.execute("COMMIT")
+    return redirect("/")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -239,6 +256,7 @@ def autocomplete():
     return render_template("autocomplete.html", markets=results, price=getMarketPrice)
 
 @app.route("/trade", methods=["GET", "POST"])
+@login_required
 def trade():
     mktTitle = request.args.get("market")
     if request.method == "POST":
@@ -248,22 +266,37 @@ def trade():
         price = request.form.get("price")
         if not amount or not action or not action in ["BUY", "SELL"] or int(amount) <= 0 or not price or int(price) <= 0:
             return apology("All fields were not filled out correctly.", 403)
-        db.execute("INSERT INTO liveOrders (sharesCount, side, limitPrice) VALUES (?, ?, ?)", amount, action, price)
-
+        already = db.execute("SELECT * FROM liveOrders WHERE initiatorId = ?", session["user_id"])
+        if len(already) > 0:
+            return apology("You already have open orders for this market. Please cancel them before making more.", 403)
         id = db.execute("SELECT * FROM markets WHERE title = ?", mktTitle)
-        print(id, mktTitle)
         if not id or not id[0] or not id[0]["id"]:
             return apology("Market not found", 403)
         id = id[0]["id"]
+        db.execute("INSERT INTO liveOrders (initiatorId, marketId, sharesCount, side, limitPrice) VALUES (?, ?, ?, ?, ?)", session["user_id"], id, amount, action, price)
+        print(id, mktTitle)
         refreshOrders(id)
         return redirect("/")
     elif mktTitle:
-        mktId = db.execute("SELECT * FROM markets WHERE title = ?", mktTitle)[0]["id"]
+        mkt = db.execute("SELECT * FROM markets WHERE title = ?", mktTitle)[0]
+        mktId = mkt["id"]
+        left = mkt["ipo_shares_left"]
+        ipo = mkt["ipo"]
         print(mktId)
         mktPrice = getMarketPrice(mktId)
         if not mktPrice:
             return apology("Market does not exist!", 403)
-        return render_template("quote.html", mktTitle=mktTitle, mktPrice=mktPrice, pts=pts)
+        lowestSeller = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='SELL' ORDER BY createdAt DESC LIMIT 1", mktId)
+        if lowestSeller and lowestSeller[0]:
+            lowestSeller = lowestSeller[0]["limitPrice"]
+        else:
+            lowestSeller = None
+        highestBuyer = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='BUY' ORDER BY createdAt DESC LIMIT 1", mktId)
+        if highestBuyer and highestBuyer[0]:
+            highestBuyer = highestBuyer[0]["limitPrice"]
+        else:
+            highestBuyer = None
+        return render_template("quote.html", mktTitle=mktTitle, mktPrice=mktPrice, pts=pts, left=left, ipo=ipo, lowestSeller=lowestSeller, highestBuyer=highestBuyer)
     else:
         return render_template("trade.html")
 

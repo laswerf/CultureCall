@@ -44,6 +44,32 @@
             <td>{{ position["side"] }}</td>
             <td>{{ pts(position["limitPrice"]) }}</td>
             <td>{{ pts(position["limitPrice"] * position["sharesCount"]) }}</td>
+            <td>
+                <form action="/cancel" method="post">
+                    <input type="hidden" name="market" value="{{ position['marketId'] }}">
+                    <button type="submit">Cancel</button>
+                </form>
+            </td>
+        </tr>
+    {% endfor %}
+    </table>
+    <hr>
+    <h2>History</h2>
+    <table>
+        <tr>
+            <th>Market</th>
+            <th>Side</th>
+            <th>Price</th>
+            <th>Shares</th>
+            <th>Total Value</th>
+        </tr>
+    {% for transaction in history %}
+        <tr>
+            <td>{{ transaction["market"] }}</td>
+            <td>{{ transaction["side"] }}</td>
+            <td>{{ pts(transaction["executePrice"]) }}</td>
+            <td>{{ transaction["sharesCount"] }}</td>
+            <td>{{ pts(transaction["executePrice"] * transaction["sharesCount"]) }}</td>
         </tr>
     {% endfor %}
     </table>
