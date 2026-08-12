@@ -30,4 +30,73 @@
         <h3>Highest buyer (ask): {{ pts(highestBuyer) }}</h3>
         {% endif %}
     {% endif %}
+
+    <div class="chart-range-controls mb-3">
+        <form method="get" action="/trade" class="d-flex flex-wrap justify-content-center gap-2">
+            <input type="hidden" name="market" value="{{ mktTitle }}">
+            {% for label, value in [('1 day', '1'), ('7 day', '7'), ('30 day', '30'), ('All', 'all')] %}
+                <button type="submit" name="range" value="{{ value }}" class="btn btn-sm {% if selected_range == value %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ label }}</button>
+            {% endfor %}
+        </form>
+
+        <form method="get" action="/trade" class="row g-2 justify-content-center mt-3">
+            <input type="hidden" name="market" value="{{ mktTitle }}">
+            <div class="col-auto">
+                <input type="date" name="start_date" value="{{ start_date or '' }}" class="form-control" aria-label="Start date">
+            </div>
+            <div class="col-auto">
+                <input type="date" name="end_date" value="{{ end_date or '' }}" class="form-control" aria-label="End date">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Custom range</button>
+            </div>
+        </form>
+    </div>
+
+    <canvas id="priceChart"></canvas>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const chartLabels = {{ labels | tojson }};
+        const chartData = {{ values | tojson }};
+
+        const ctx = document.getElementById('priceChart').getContext('2d');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'Price (pts)',
+                    data: chartData,
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                hover: {
+                    mode: 'index',
+                    intersect: false
+                },
+                scales: {
+                    y: { beginAtZero: false }
+                }
+            }
+        });
+    </script>
 {% endblock %}

@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Create
+{% endblock %}
+
+{% block main %}
+    <h1>Create a Market</h1>
+    <form>
+        <input name="title" type="text" placeholder="Market Title">
+        <input type="number" step="0.01" name="ipo" placeholder="IPO Price">
+        <input type="number" name="shares" placeholder="Amount of Shares">
+        <button type="submit">Submit</button>
+    </form>
+{% endblock %}

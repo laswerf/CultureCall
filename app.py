@@ -8,6 +8,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from helpers import apology, login_required, lookup, pts
 
+import requests
+
 # Configure application
 app = Flask(__name__)
 
@@ -21,6 +23,7 @@ Session(app)
 
 # Configure CS50 Library to use SQLite database
 db = SQL("sqlite:///culture.db")
+
 
 @app.after_request
 def after_request(response):
@@ -37,10 +40,10 @@ def getMarketPrice(mktId):
     check = check[0]
     ipo = check["ipo"]
     left = check["ipo_shares_left"]
-    check = db.execute("SELECT * FROM history WHERE marketId = ? ORDER BY executeTime DESC", mktId)
+    check = db.execute("SELECT * FROM history WHERE marketId = ? ORDER BY executeTime DESC LIMIT 1", mktId)
     if check and check[0]:
         check = check[0]["executePrice"]
-        if ipo > check:
+        if left > 0 and ipo > check:
             return ipo
         return check
     elif left > 0:
@@ -126,8 +129,8 @@ def refreshOrders(marketId):
 
         total = sellPrice * totalShares
 
-        sellid = lowestSeller["id"]
-        buyid = highestBuyer["id"]
+        sellid = lowestSeller["initiatorId"]
+        buyid = highestBuyer["initiatorId"]
 
         # -- Update all database tables and record transaction -- #
 
@@ -154,8 +157,12 @@ def refreshOrders(marketId):
         db.execute("UPDATE users SET points = points + ? WHERE id = ?", total, sellid)
 
         # add the stock to the buyer's portfolio and take the points from their balance for it
-        db.execute("UPDATE portfolio SET points = points - ? WHERE id = ?", total, buyid)
-        db.execute("INSERT INTO portfolio VALUES (?, ?, ?)", buyid, marketId, totalShares)
+        db.execute("UPDATE users SET points = points - ? WHERE id = ?", total, buyid)
+        print(buyid, marketId)
+        if db.execute("SELECT * FROM portfolio WHERE userId = ? AND marketId = ?", buyid, marketId)[0]:
+            db.execute("UPDATE portfolio SET sharesCount = sharesCount + ? WHERE userId = ? AND marketId = ?", totalShares, buyid, marketId)
+        else:
+            db.execute("INSERT INTO portfolio (userId, marketId, sharesCount) VALUES (?, ?, ?)", buyid, marketId, totalShares)
 
         # add transaction to history table
         db.execute("INSERT INTO history (sellerId, marketId, buyerId, sharesCount, executePrice) VALUES (?, ?, ?, ?, ?)", sellid, marketId, buyid, totalShares, sellPrice)
@@ -224,6 +231,7 @@ def login():
 
         # Remember which user has logged in
         session["user_id"] = rows[0]["id"]
+        app.jinja_env.globals["username"] = request.form.get("username")
 
         # Redirect user to home page
         return redirect("/")
@@ -264,7 +272,7 @@ def trade():
         action = request.form.get("action")
         amount = request.form.get("amount")
         price = request.form.get("price")
-        if not amount or not action or not action in ["BUY", "SELL"] or int(amount) <= 0 or not price or int(price) <= 0:
+        if not amount or not action or not action in ["BUY", "SELL"] or float(amount) <= 0 or not price or float(price) <= 0:
             return apology("All fields were not filled out correctly.", 403)
         already = db.execute("SELECT * FROM liveOrders WHERE initiatorId = ?", session["user_id"])
         if len(already) > 0:
@@ -273,11 +281,15 @@ def trade():
         if not id or not id[0] or not id[0]["id"]:
             return apology("Market not found", 403)
         id = id[0]["id"]
-        db.execute("INSERT INTO liveOrders (initiatorId, marketId, sharesCount, side, limitPrice) VALUES (?, ?, ?, ?, ?)", session["user_id"], id, amount, action, price)
+        db.execute("INSERT INTO liveOrders (initiatorId, marketId, sharesCount, side, limitPrice) VALUES (?, ?, ?, ?, ?)", session["user_id"], id, amount, action, float(price))
         print(id, mktTitle)
         refreshOrders(id)
         return redirect("/")
     elif mktTitle:
+        chart_range = request.args.get("range", "all")
+        start_date = request.args.get("start_date")
+        end_date = request.args.get("end_date")
+
         mkt = db.execute("SELECT * FROM markets WHERE title = ?", mktTitle)[0]
         mktId = mkt["id"]
         left = mkt["ipo_shares_left"]
@@ -296,7 +308,35 @@ def trade():
             highestBuyer = highestBuyer[0]["limitPrice"]
         else:
             highestBuyer = None
-        return render_template("quote.html", mktTitle=mktTitle, mktPrice=mktPrice, pts=pts, left=left, ipo=ipo, lowestSeller=lowestSeller, highestBuyer=highestBuyer)
+
+        history_query = "SELECT * FROM history WHERE marketId = ?"
+        history_params = [mktId]
+
+        if start_date or end_date:
+            if start_date:
+                history_query += " AND datetime(executeTime) >= datetime(?)"
+                history_params.append(start_date)
+            if end_date:
+                history_query += " AND datetime(executeTime) <= datetime(?, '23:59:59')"
+                history_params.append(end_date)
+        elif chart_range == "1":
+            history_query += " AND datetime(executeTime) >= datetime('now', '-1 day')"
+        elif chart_range == "7":
+            history_query += " AND datetime(executeTime) >= datetime('now', '-7 days')"
+        elif chart_range == "30":
+            history_query += " AND datetime(executeTime) >= datetime('now', '-30 days')"
+
+        history_query += " ORDER BY executeTime ASC"
+        values = db.execute(history_query, *history_params)
+
+        times = []
+        prices = []
+        for val in values:
+            times.append(val["executeTime"])
+            prices.append(val["executePrice"])
+
+        print(times, prices)
+        return render_template("quote.html", labels=times, values=prices, mktTitle=mktTitle, mktPrice=mktPrice, pts=pts, left=left, ipo=ipo, lowestSeller=lowestSeller, highestBuyer=highestBuyer, selected_range=chart_range, start_date=start_date, end_date=end_date)
     else:
         return render_template("trade.html")
 
@@ -309,3 +349,27 @@ def logout():
 
     # Redirect user to login form
     return redirect("/")
+
+
+wikistart = 'https://en.wikipedia.org/api/rest_v1/page/title/'
+
+headers = {
+    "User-Agent": "CS50Project/CultureCall/Beta/ (jamesdaoust27@gmail.com)"
+}
+
+@app.route("/create", methods=["GET", "POST"])
+@login_required
+def create():
+    if request.method == "GET":
+        return render_template("create.html")
+    elif request.method == "POST":
+        title = request.form.get("title")
+        ipo = request.form.get("ipo")
+        shares = request.form.get("shares")
+
+        r = requests.get(wikistart + title, headers=headers)
+        code = r.status_code
+        if code == 404:
+            return apology("All markets must have a corresponding wikipedia page.", 403)
+        else:
+            # TODO: add logic to create market
