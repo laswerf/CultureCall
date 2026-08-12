@@ -8,6 +8,7 @@
     <h1>{{ mktTitle }}</h1>
     <h2>Price: {{ pts(mktPrice) }}</h2>
     <form action="/trade" method="post">
+        <input type="hidden" name="mktTitle" value="{{ mktTitle }}">
         <label>
             <input type="radio" name="action" title="Buy" value="BUY">Buy
         </label>

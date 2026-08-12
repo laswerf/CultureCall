@@ -65,25 +65,105 @@ def refreshOrders(marketId):
     openOrders = db.execute("SELECT * FROM liveOrders WHERE marketId = ? ORDER BY createdAt DESC", marketId)
 
     def continueRefresh():
-        lowestSeller = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='SELL' ORDER BY createdAt DESC LIMIT 1")
-        highestBuyer = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='BUY' ORDER BY createdAt DESC LIMIT 1")
+        lowestSeller = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='SELL' ORDER BY createdAt DESC LIMIT 1", marketId)
+        highestBuyer = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='BUY' ORDER BY createdAt DESC LIMIT 1", marketId)
+
+        if left > 0 and highestBuyer and highestBuyer[0] and ipo <= highestBuyer[0]["limitPrice"]:
+            buyer = highestBuyer[0]
+            shares = min(left, buyer["sharesCount"])
+            total = ipo * shares
+
+            # IPO shares are sold directly from the market, not from a user's portfolio.
+            db.execute("UPDATE markets SET ipo_shares_left = ipo_shares_left - ? WHERE id = ?", shares, marketId)
+            db.execute("UPDATE users SET points = points - ? WHERE id = ?", total, buyer["initiatorId"])
+
+            current = db.execute("SELECT sharesCount FROM portfolio WHERE userId = ? AND marketId = ?", buyer["initiatorId"], marketId)
+            if current and current[0]:
+                db.execute("UPDATE portfolio SET sharesCount = sharesCount + ? WHERE userId = ? AND marketId = ?", shares, buyer["initiatorId"], marketId)
+            else:
+                db.execute("INSERT INTO portfolio (userId, marketId, sharesCount) VALUES (?, ?, ?)", buyer["initiatorId"], marketId, shares)
+
+            if buyer["sharesCount"] == shares:
+                db.execute("DELETE FROM liveOrders WHERE id = ?", buyer["id"])
+            else:
+                db.execute("UPDATE liveOrders SET sharesCount = sharesCount - ? WHERE id = ?", shares, buyer["id"])
+
+            db.execute("INSERT INTO history (sellerId, marketId, buyerId, sharesCount, executePrice, executeTime) VALUES (?, ?, ?, ?, ?, datetime('now'))", None, marketId, buyer["initiatorId"], shares, ipo)
+
+            return True
 
         if not lowestSeller or not lowestSeller[0] or not highestBuyer or not highestBuyer[0]:
-            return
+            print("There isn't a buyer and a seller for this market!")
+            return False
 
         lowestSeller = lowestSeller[0]
         highestBuyer = highestBuyer[0]
 
+        sellingPrice = lowestSeller["limitPrice"]
+        buyingPrice = highestBuyer["limitPrice"]
+
+        if sellingPrice > buyingPrice:
+            return False
+
         sellTime = datetime.fromisoformat(lowestSeller["createdAt"])
         buyTime = datetime.fromisoformat(highestBuyer["createdAt"])
 
-        if sellTime < buyTime:
-            winner = lowestSeller
-        else:
-            winner = buyTime
+        sellPrice = 0
 
+        if sellTime < buyTime:
+            sellPrice = lowestSeller["limitPrice"]
+        else:
+            sellPrice = highestBuyer["limitPrice"]
+
+        amttoSell = lowestSeller["sharesCount"]
+        amttoBuy = highestBuyer["sharesCount"]
+
+        totalShares = 0
+        if amttoSell <= amttoBuy: # if the buyer is willing to pay for all storage
+            totalShares = amttoSell # thus, we can treat amt to sell as total to be sold
+        else:
+            totalShares = amttoBuy # otherwise, the max we can sell is the max they are willing to buy
+
+        total = sellPrice * totalShares
+
+        sellid = lowestSeller["id"]
+        buyid = highestBuyer["id"]
+
+        # -- Update all database tables and record transaction -- #
+
+        # update liveorders sell side
+        # if the seller was selling all of their selling to this person, just delete it from their portfolio.
+        if amttoSell <= amttoBuy:
+            db.execute("DELETE FROM portfolio WHERE userId = ? AND marketId = ?", sellid, marketId)
+            # remove the order from liveorders since its been filled entirely
+            db.execute("DELETE FROM liveOrders WHERE side = 'SELL' AND initiatorId = ? AND marketId = ?", sellid, marketId)
+            if (amttoSell == amttoBuy):
+                # we can remove the corresponding buy order too
+                db.execute("DELETE FROM liveOrders WHERE side = 'BUY' AND initiatorId = ? AND marketId = ?", buyid, marketId)
+            else:
+                # just decrement the corresponding buy order since its not done in full
+                db.execute("UPDATE liveOrders SET sharesCount = sharesCount - ? WHERE side = 'BUY' AND initiatorId = ? AND marketId = ?", buyid, marketId)
+        else: # if they were only selling some because less liquidity, just remove some from their share count.
+            db.execute("UPDATE portfolio SET sharesCount = sharesCount - ? WHERE userId = ? AND marketId = ?", totalShares, sellid, marketId)
+            # update liveorders since order has been partially filled
+            db.execute("UPDATE liveOrders SET sharesCount = sharesCount - ? WHERE side = 'SELL' AND initiatorId = ? AND marketId = ?", totalShares, sellid, marketId)
+            # delete buy order since it was filled entirely
+            db.execute("DELETE FROM liveOrders WHERE side = 'BUY' AND initiatorId = ? AND marketId = ?", buyid, marketId)
+
+        # give the seller their money the other person paid
+        db.execute("UPDATE users SET points = points + ? WHERE id = ?", total, sellid)
+
+        # add the stock to the buyer's portfolio and take the points from their balance for it
+        db.execute("UPDATE portfolio SET points = points - ? WHERE id = ?", total, buyid)
+        db.execute("INSERT INTO portfolio VALUES (?, ?, ?)", buyid, marketId, totalShares)
+
+        # add transaction to history table
+        db.execute("INSERT INTO history (sellerId, marketId, buyerId, sharesCount, executePrice) VALUES (?, ?, ?, ?, ?)", sellid, marketId, buyid, totalShares, sellPrice)
+
+        return True
         
-    continueRefresh()
+    while continueRefresh() == True:
+        continue
 
     db.execute("COMMIT")
 
@@ -162,13 +242,20 @@ def autocomplete():
 def trade():
     mktTitle = request.args.get("market")
     if request.method == "POST":
+        mktTitle = request.form.get("mktTitle")
         action = request.form.get("action")
         amount = request.form.get("amount")
         price = request.form.get("price")
-        if not amount or not action or not action in ["BUY", "SELL"] or amount <= 0 or not price or price <= 0:
+        if not amount or not action or not action in ["BUY", "SELL"] or int(amount) <= 0 or not price or int(price) <= 0:
             return apology("All fields were not filled out correctly.", 403)
         db.execute("INSERT INTO liveOrders (sharesCount, side, limitPrice) VALUES (?, ?, ?)", amount, action, price)
-        refreshOrders(db.execute("SELECT * FROM markets WHERE title = ?", mktTitle)[0]["id"])
+
+        id = db.execute("SELECT * FROM markets WHERE title = ?", mktTitle)
+        print(id, mktTitle)
+        if not id or not id[0] or not id[0]["id"]:
+            return apology("Market not found", 403)
+        id = id[0]["id"]
+        refreshOrders(id)
         return redirect("/")
     elif mktTitle:
         mktId = db.execute("SELECT * FROM markets WHERE title = ?", mktTitle)[0]["id"]
