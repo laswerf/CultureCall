@@ -159,7 +159,7 @@ def refreshOrders(marketId):
         # add the stock to the buyer's portfolio and take the points from their balance for it
         db.execute("UPDATE users SET points = points - ? WHERE id = ?", total, buyid)
         print(buyid, marketId)
-        if db.execute("SELECT * FROM portfolio WHERE userId = ? AND marketId = ?", buyid, marketId)[0]:
+        if len(db.execute("SELECT * FROM portfolio WHERE userId = ? AND marketId = ?", buyid, marketId)) > 0:
             db.execute("UPDATE portfolio SET sharesCount = sharesCount + ? WHERE userId = ? AND marketId = ?", totalShares, buyid, marketId)
         else:
             db.execute("INSERT INTO portfolio (userId, marketId, sharesCount) VALUES (?, ?, ?)", buyid, marketId, totalShares)
@@ -272,15 +272,15 @@ def trade():
         action = request.form.get("action")
         amount = request.form.get("amount")
         price = request.form.get("price")
-        if not amount or not action or not action in ["BUY", "SELL"] or float(amount) <= 0 or not price or float(price) <= 0:
-            return apology("All fields were not filled out correctly.", 403)
-        already = db.execute("SELECT * FROM liveOrders WHERE initiatorId = ?", session["user_id"])
-        if len(already) > 0:
-            return apology("You already have open orders for this market. Please cancel them before making more.", 403)
         id = db.execute("SELECT * FROM markets WHERE title = ?", mktTitle)
         if not id or not id[0] or not id[0]["id"]:
             return apology("Market not found", 403)
         id = id[0]["id"]
+        if not amount or not action or not action in ["BUY", "SELL"] or float(amount) <= 0 or not price or float(price) <= 0:
+            return apology("All fields were not filled out correctly.", 403)
+        already = db.execute("SELECT * FROM liveOrders WHERE initiatorId = ? AND marketId = ?", session["user_id"], id)
+        if len(already) > 0:
+            return apology("You already have open orders for this market. Please cancel them before making more.", 403)
         db.execute("INSERT INTO liveOrders (initiatorId, marketId, sharesCount, side, limitPrice) VALUES (?, ?, ?, ?, ?)", session["user_id"], id, amount, action, float(price))
         print(id, mktTitle)
         refreshOrders(id)
@@ -300,12 +300,12 @@ def trade():
             return apology("Market does not exist!", 403)
         lowestSeller = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='SELL' ORDER BY createdAt DESC LIMIT 1", mktId)
         if lowestSeller and lowestSeller[0]:
-            lowestSeller = lowestSeller[0]["limitPrice"]
+            lowestSeller = lowestSeller[0]
         else:
             lowestSeller = None
         highestBuyer = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='BUY' ORDER BY createdAt DESC LIMIT 1", mktId)
         if highestBuyer and highestBuyer[0]:
-            highestBuyer = highestBuyer[0]["limitPrice"]
+            highestBuyer = highestBuyer[0]
         else:
             highestBuyer = None
 
@@ -336,7 +336,13 @@ def trade():
             prices.append(val["executePrice"])
 
         print(times, prices)
-        return render_template("quote.html", labels=times, values=prices, mktTitle=mktTitle, mktPrice=mktPrice, pts=pts, left=left, ipo=ipo, lowestSeller=lowestSeller, highestBuyer=highestBuyer, selected_range=chart_range, start_date=start_date, end_date=end_date)
+
+        totalShares = db.execute("SELECT SUM(sharesCount) AS total FROM portfolio WHERE marketId = ?", mktId)
+        if totalShares and totalShares[0] and totalShares[0]["total"]:
+            totalShares = totalShares[0]["total"]
+        else:
+            totalShares = left
+        return render_template("quote.html", labels=times, totalShares=totalShares, values=prices, mktTitle=mktTitle, mktPrice=mktPrice, pts=pts, left=left, ipo=ipo, lowestSeller=lowestSeller, highestBuyer=highestBuyer, selected_range=chart_range, start_date=start_date, end_date=end_date)
     else:
         return render_template("trade.html")
 
@@ -364,12 +370,19 @@ def create():
         return render_template("create.html")
     elif request.method == "POST":
         title = request.form.get("title")
-        ipo = request.form.get("ipo")
-        shares = request.form.get("shares")
+        if len(db.execute("SELECT * FROM markets WHERE title = ?", title)) > 0:
+            return apology("Market already created", 403)
+        ipo = float(request.form.get("ipo"))
+        shares = int(request.form.get("shares"))
 
         r = requests.get(wikistart + title, headers=headers)
         code = r.status_code
         if code == 404:
             return apology("All markets must have a corresponding wikipedia page.", 403)
         else:
-            # TODO: add logic to create market
+            # add logic to create market
+            if shares < 100 or ipo <= 0:
+                return apology("IPO shares must be greater than 100, and price must be a positive number", 403)
+            db.execute("INSERT INTO markets (title, ipo, ipo_shares_left) VALUES (?, ?, ?)", title, ipo, shares)
+            print("MARKET CREATED")
+            return redirect("/trade?market=" + title)

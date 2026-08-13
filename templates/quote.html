@@ -24,11 +24,13 @@
         IPO selling price: {{ ipo }}
     {% else %}
         {% if lowestSeller %}
-        <h3>Lowest seller (bid): {{ pts(lowestSeller) }}</h3>
+        <h3>Lowest seller (ask): {{ pts(lowestSeller["limitPrice"]) }}, amount: {{ lowestSeller["sharesCount"] }}</h3>
         {% endif %}
         {% if highestBuyer %}
-        <h3>Highest buyer (ask): {{ pts(highestBuyer) }}</h3>
+        <h3>Highest buyer (bid): {{ pts(highestBuyer["limitPrice"]) }}, amount: {{ highestBuyer["sharesCount"] }}</h3>
         {% endif %}
+        <h3>Total shares on market: {{ totalShares }}</h3>
+        <h3>Market Capitalization: {{ pts(totalShares * mktPrice) }}</h3>
     {% endif %}
 
     <div class="chart-range-controls mb-3">
