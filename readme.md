@@ -7,7 +7,7 @@ Users “bet” on shows, celebrities, etc. All markets must be instantiated wit
 Simple Overview of features: user accounts, a portfolio, an order book, buy/sell limit orders, an actual matching algorithm, IPO shares, transaction history, market pricing, historical charts with date ranges, AJAX autocomplete, market creation backed by Wikipedia validation, seven-day volume rankings, and a leaderboard.
 
 Key Subpages: 
-/markets - list of top 10 markets by past 7 days trading volume
+/markets - list of top 10 markets by past 7 days trading volume 
 /leaderboard - leaderboard of top users by points balance
 /trade - look up markets with autocomplete, click on them to view stats + graph price, and place buy and sell orders
 /create - create markets, we check that the markets are indeed not spam by using wikipedia api to make sure the titles are real things/people.
