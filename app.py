@@ -68,6 +68,7 @@ def refreshOrders(marketId):
     openOrders = db.execute("SELECT * FROM liveOrders WHERE marketId = ? ORDER BY createdAt DESC", marketId)
 
     def continueRefresh():
+        left = market["ipo_shares_left"]
         lowestSeller = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='SELL' ORDER BY limitPrice ASC LIMIT 1", marketId)
         highestBuyer = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='BUY' ORDER BY limitPrice DESC LIMIT 1", marketId)
         print(left, ipo, highestBuyer)
@@ -137,7 +138,10 @@ def refreshOrders(marketId):
         # update liveorders sell side
         # if the seller was selling all of their selling to this person, just delete it from their portfolio.
         if amttoSell <= amttoBuy:
-            db.execute("DELETE FROM portfolio WHERE userId = ? AND marketId = ?", sellid, marketId)
+            if len(db.execute("SELECT * FROM portfolio WHERE marketId = ? AND userId = ?", marketId, sellid)) > 0:
+                db.execute("UPDATE portfolio SET sharesCount = sharesCount - ? WHERE userId = ? AND marketId = ?", totalShares, sellid, marketId)
+            else:
+                db.execute("DELETE FROM portfolio WHERE userId = ? AND marketId = ?", sellid, marketId)
             # remove the order from liveorders since its been filled entirely
             db.execute("DELETE FROM liveOrders WHERE side = 'SELL' AND initiatorId = ? AND marketId = ?", sellid, marketId)
             if (amttoSell == amttoBuy):

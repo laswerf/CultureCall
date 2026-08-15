@@ -70,7 +70,7 @@ When users submit an order with a limitPrice, it "refreshes" and the server fill
 and handles race conditions properly, as well as partial order fills (ex. seller 50 shares, buyer 30 shares, 30 share transaction can still take place)
 
 Quote Search:
-Using AJAX and 
+Using AJAX, SQL, and Jinja, when the user types the beginning of a market's name in the quote section, max 5 markets pop up that might be what the user is searching for. 
 
 Leaderboards:
 The leaderboard page sorts by liquid points balance to the top players, allowing for some social credit or bragging rights!
