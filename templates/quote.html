@@ -15,10 +15,11 @@
         <label>
             <input type="radio" name="action" title="Sell" value="SELL">Sell
         </label>
-        <input type="number" step="0.01" name="price" placeholder="Target Price"><abbr title="If you want to buy at any price, just set the price high and it will buy the lowest avaliable.">Help</abbr>
-        <input type="number" name="amount" placeholder="Shares Amount">
+        <input type="number" step="0.01" name="price" placeholder="Target Price" id="targetPrice"><abbr title="If you want to buy at any price, just set the price high and it will buy the lowest avaliable.">Help</abbr>
+        <input type="number" name="amount" placeholder="Shares Amount" id="targetAmount">
         <button type="submit">Submit</button>
     </form>
+    <h3 id="totalPrice"></h3>
     {% if left > 0 %}
         IPO shares left: {{ left }}
         IPO selling price: {{ ipo }}
@@ -60,6 +61,31 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
+        const price = document.getElementById("targetPrice");
+        const amount = document.getElementById("targetAmount");
+
+        const total = document.getElementById("totalPrice");
+
+        let sum = 0;
+
+        function refresh() {
+            console.log("Refresh");
+            p = Number.parseFloat(price.value)
+            am = Number.parseInt(amount.value)
+            if (!Number.isNaN(p) && !Number.isNaN(am))
+            {
+                sum = am * p;
+                const formatted = new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+                }).format(sum);
+                total.innerText = "Total Order: " + formatted + " points";
+            }
+        }
+
+        price.addEventListener('input', refresh);
+        amount.addEventListener('input', refresh);
+
         const chartLabels = {{ labels | tojson }};
         const chartData = {{ values | tojson }};
 
