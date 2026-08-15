@@ -6,20 +6,25 @@
 
 {% block main %}
     <h1>{{ mktTitle }}</h1>
+    <hr>
     <h2>Price: {{ pts(mktPrice) }}</h2>
     <form action="/trade" method="post">
         <input type="hidden" name="mktTitle" value="{{ mktTitle }}">
         <label>
-            <input type="radio" name="action" title="Buy" value="BUY">Buy
+            <input type="radio" name="action" title="Buy" value="BUY" class="radio-inputs">Buy
         </label>
         <label>
-            <input type="radio" name="action" title="Sell" value="SELL">Sell
+            <input type="radio" name="action" title="Sell" value="SELL" class="radio-inputs">Sell
         </label>
         <input type="number" step="0.01" name="price" placeholder="Target Price" id="targetPrice"><abbr title="If you want to buy at any price, just set the price high and it will buy the lowest avaliable.">Help</abbr>
         <input type="number" name="amount" placeholder="Shares Amount" id="targetAmount">
         <button type="submit">Submit</button>
     </form>
     <h3 id="totalPrice"></h3>
+    <br>
+    <hr>
+    <h1>Market Stats</h1>
+    <hr>
     {% if left > 0 %}
         IPO shares left: {{ left }}
         IPO selling price: {{ ipo }}

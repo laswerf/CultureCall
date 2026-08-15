@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Leaderboard
+{% endblock %}
+
+{% block main %}
+    <h1>User Leaderboard</h1>
+    <ol>
+    {% for user in userRanks %}
+        <li>User {{ user["username"] }}: {{ pts(user["points"]) }}</li>
+    {% endfor %}
+    </ol>
+    <br>
+{% endblock %}

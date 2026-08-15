@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Explore Markets
+{% endblock %}
+
+{% block main %}
+    <h1>Top Markets</h1>
+    <hr>
+    {% for market in topMarkets %}
+        <h3>{{ market["title"] }}</h3>
+        <hr>
+        <h4>Price: {{ market["price"] }}</h4>
+        <a href="/trade?market={{ market['title'] }}">Link</a>
+        <br>
+    {% endfor %}
+{% endblock %}

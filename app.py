@@ -6,7 +6,7 @@ from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from helpers import apology, login_required, lookup, pts
+from helpers import apology, login_required, pts
 
 import requests
 
@@ -386,3 +386,14 @@ def create():
             db.execute("INSERT INTO markets (title, ipo, ipo_shares_left) VALUES (?, ?, ?)", title, ipo, shares)
             print("MARKET CREATED")
             return redirect("/trade?market=" + title)
+
+
+@app.route("/leaderboard")
+def leader():
+    userRanks = db.execute("SELECT * FROM users ORDER BY points DESC LIMIT 20") # no need to join market values as those can be easily configured to *look* incredibly large
+    return render_template("leaderboard.html", userRanks=userRanks, pts=pts)
+
+@app.route("/markets")
+def markets():
+    topMarkets = db.execute("SELECT m.id, m.title, CASE WHEN m.ipo_shares_left > 0 AND COALESCE((SELECT h.executePrice FROM history h WHERE h.marketId = m.id ORDER BY h.executeTime DESC, h.id DESC LIMIT 1), 0) < m.ipo THEN m.ipo ELSE COALESCE((SELECT h.executePrice FROM history h WHERE h.marketId = m.id ORDER BY h.executeTime DESC, h.id DESC LIMIT 1), m.ipo) END AS price, COALESCE(SUM(CASE WHEN h.executeTime >= datetime('now', '-7 days') THEN h.sharesCount * h.executePrice ELSE 0 END), 0) AS volume_points FROM markets m LEFT JOIN history h ON h.marketId = m.id GROUP BY m.id, m.title, m.ipo, m.ipo_shares_left ORDER BY volume_points DESC, m.id LIMIT 10")
+    return render_template("markets.html", topMarkets=topMarkets)
