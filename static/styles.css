@@ -1,3 +1,5 @@
+/* AI NOTICE: ALL CSS props with comments before them used ai to help style */
+
 /* Size for brand */
 nav .navbar-brand {
     font-size: xx-large;
@@ -211,8 +213,7 @@ form button {
     margin-top: 0;
 }
 
-/* Radio inputs */
-/* Radio button group container */
+/* Radio inputs *//* Radio button group container */
 .radio-group {
     display: flex;
     gap: 0.75rem;

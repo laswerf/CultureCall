@@ -145,7 +145,7 @@ def refreshOrders(marketId):
                 db.execute("DELETE FROM liveOrders WHERE side = 'BUY' AND initiatorId = ? AND marketId = ?", buyid, marketId)
             else:
                 # just decrement the corresponding buy order since its not done in full
-                db.execute("UPDATE liveOrders SET sharesCount = sharesCount - ? WHERE side = 'BUY' AND initiatorId = ? AND marketId = ?", buyid, marketId)
+                db.execute("UPDATE liveOrders SET sharesCount = sharesCount - ? WHERE side = 'BUY' AND initiatorId = ? AND marketId = ?", amttoSell, buyid, marketId)
         else: # if they were only selling some because less liquidity, just remove some from their share count.
             db.execute("UPDATE portfolio SET sharesCount = sharesCount - ? WHERE userId = ? AND marketId = ?", totalShares, sellid, marketId)
             # update liveorders since order has been partially filled

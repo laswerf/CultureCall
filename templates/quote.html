@@ -88,6 +88,8 @@
         price.addEventListener('input', refresh);
         amount.addEventListener('input', refresh);
 
+        // This chart code is to the credit of Google, not myself. I did have to search the docs for how to make this and copy pasted some code.
+
         const chartLabels = {{ labels | tojson }};
         const chartData = {{ values | tojson }};
 

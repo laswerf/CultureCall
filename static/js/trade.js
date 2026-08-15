@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
+    // This JS was written by me with the help of AI
+
     search.addEventListener('input', function () {
         const query = this.value.trim();
 
