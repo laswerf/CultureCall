@@ -360,7 +360,7 @@ def logout():
 wikistart = 'https://en.wikipedia.org/api/rest_v1/page/title/'
 
 headers = {
-    "User-Agent": "CS50Project/CultureCall/Beta/ (jamesdaoust27@gmail.com)"
+    "User-Agent": f"CultureCall (BETA) (Should not cause issues)"
 }
 
 @app.route("/create", methods=["GET", "POST"])
