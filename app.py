@@ -283,6 +283,29 @@ def trade():
         already = db.execute("SELECT * FROM liveOrders WHERE initiatorId = ? AND marketId = ?", session["user_id"], id)
         if len(already) > 0:
             return apology("You already have open orders for this market. Please cancel them before making more.", 403)
+        
+        if action == "BUY":
+            balance = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])[0]["points"]
+            orderValue = float(price) * int(amount)
+            
+            # Calculate total value of all existing open BUY orders
+            openBuyOrders = db.execute("SELECT * FROM liveOrders WHERE initiatorId = ? AND side = 'BUY'", session["user_id"])
+            lockedFunds = sum([float(order["limitPrice"]) * int(order["sharesCount"]) for order in openBuyOrders])
+            
+            # Check if user has enough balance for this order plus existing orders
+            if balance - orderValue - lockedFunds < 0:
+                return apology("You do not have enough funds to enter this trade.")
+        
+        elif action == "SELL":
+            # Check if user has enough shares to sell
+            portfolio = db.execute("SELECT * FROM portfolio WHERE userId = ? AND marketId = ?", session["user_id"], id)
+            if not portfolio or not portfolio[0]:
+                return apology("You don't own any shares of this market.")
+            sharesOwned = int(portfolio[0]["sharesCount"])
+            sharesWanted = int(amount)
+            if sharesOwned < sharesWanted:
+                return apology("You don't have enough shares to sell.")
+
         db.execute("INSERT INTO liveOrders (initiatorId, marketId, sharesCount, side, limitPrice) VALUES (?, ?, ?, ?, ?)", session["user_id"], id, amount, action, float(price))
         print(id, mktTitle)
         refreshOrders(id)
@@ -300,12 +323,12 @@ def trade():
         mktPrice = getMarketPrice(mktId)
         if not mktPrice:
             return apology("Market does not exist!", 403)
-        lowestSeller = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='SELL' ORDER BY createdAt DESC LIMIT 1", mktId)
+        lowestSeller = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='SELL' ORDER BY limitPrice ASC LIMIT 1", mktId)
         if lowestSeller and lowestSeller[0]:
             lowestSeller = lowestSeller[0]
         else:
             lowestSeller = None
-        highestBuyer = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='BUY' ORDER BY createdAt DESC LIMIT 1", mktId)
+        highestBuyer = db.execute("SELECT * FROM liveOrders WHERE marketId = ? AND side='BUY' ORDER BY limitPrice DESC LIMIT 1", mktId)
         if highestBuyer and highestBuyer[0]:
             highestBuyer = highestBuyer[0]
         else:
