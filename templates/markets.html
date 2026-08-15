@@ -9,9 +9,9 @@
     <hr>
     {% for market in topMarkets %}
         <h3>{{ market["title"] }}</h3>
-        <hr>
         <h4>Price: {{ market["price"] }}</h4>
         <a href="/trade?market={{ market['title'] }}">Link</a>
+        <hr>
         <br>
     {% endfor %}
 {% endblock %}

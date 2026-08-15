@@ -10,3 +10,6 @@ Key Components:
 /trade - look up markets with autocomplete, click on them to view stats + graph price, and place buy and sell orders
 /create - create markets, we check that the markets are indeed not spam by using wikipedia api to make sure the titles are real things/people.
 
+AI USAGE:
+The ai assistant in VS code was used for minor help, but that was negligible. The only major AI usage was with styles.css,
+which is largely AI. Essentially all other code, other than the css, was written by me or was taken from my flask pset in cs50.
