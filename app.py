@@ -6,7 +6,7 @@ from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from helpers import apology, login_required, pts
+from helpers import apology, login_required, pts, formatNum
 
 import requests
 
@@ -179,6 +179,8 @@ def refreshOrders(marketId):
 @app.route("/")
 @login_required
 def index():
+    if not app.jinja_env.globals.get("username"):
+        app.jinja_env.globals["username"] = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])[0]["username"]
     balance = db.execute("SELECT points FROM users WHERE id = ?", session["user_id"])[0]["points"]
     portfolio = db.execute("SELECT * FROM portfolio WHERE userId = ?", session["user_id"])
     open = db.execute("SELECT * FROM liveOrders WHERE initiatorId = ?", session["user_id"])
@@ -342,7 +344,7 @@ def trade():
             totalShares = totalShares[0]["total"]
         else:
             totalShares = left
-        return render_template("quote.html", labels=times, totalShares=totalShares, values=prices, mktTitle=mktTitle, mktPrice=mktPrice, pts=pts, left=left, ipo=ipo, lowestSeller=lowestSeller, highestBuyer=highestBuyer, selected_range=chart_range, start_date=start_date, end_date=end_date)
+        return render_template("quote.html", labels=times, formatNum=formatNum, totalShares=totalShares, values=prices, mktTitle=mktTitle, mktPrice=mktPrice, pts=pts, left=left, ipo=ipo, lowestSeller=lowestSeller, highestBuyer=highestBuyer, selected_range=chart_range, start_date=start_date, end_date=end_date)
     else:
         return render_template("trade.html")
 
@@ -397,3 +399,7 @@ def leader():
 def markets():
     topMarkets = db.execute("SELECT m.id, m.title, CASE WHEN m.ipo_shares_left > 0 AND COALESCE((SELECT h.executePrice FROM history h WHERE h.marketId = m.id ORDER BY h.executeTime DESC, h.id DESC LIMIT 1), 0) < m.ipo THEN m.ipo ELSE COALESCE((SELECT h.executePrice FROM history h WHERE h.marketId = m.id ORDER BY h.executeTime DESC, h.id DESC LIMIT 1), m.ipo) END AS price, COALESCE(SUM(CASE WHEN h.executeTime >= datetime('now', '-7 days') THEN h.sharesCount * h.executePrice ELSE 0 END), 0) AS volume_points FROM markets m LEFT JOIN history h ON h.marketId = m.id GROUP BY m.id, m.title, m.ipo, m.ipo_shares_left ORDER BY volume_points DESC, m.id LIMIT 10")
     return render_template("markets.html", topMarkets=topMarkets)
+
+@app.route("/about")
+def about():
+    return render_template("about.html")

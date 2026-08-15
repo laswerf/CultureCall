@@ -6,10 +6,11 @@
 
 {% block main %}
     <h1>User Leaderboard</h1>
-    <ol>
-    {% for user in userRanks %}
-        <li>User {{ user["username"] }}: {{ pts(user["points"]) }}</li>
-    {% endfor %}
-    </ol>
-    <br>
+    <div class="leaderboard-container">
+        <ol>
+        {% for user in userRanks %}
+            <li class="leaderUser"><strong>{{ user["username"] }}</strong> — {{ pts(user["points"]) }} points</li>
+        {% endfor %}
+        </ol>
+    </div>
 {% endblock %}

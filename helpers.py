@@ -55,7 +55,17 @@ def pts(value):
         return f"{value / 1_000_000_000:.2f} billion pts"
     elif abs(value) >= 1_000_000:
         return f"{value / 1_000_000:.2f} million pts"
-    elif abs(value) >= 1_000:
-        return f"{value / 1_000:.2f} thousand pts"
     else:
         return f"{value:,.2f} pts"
+
+def formatNum(value):
+    value = float(value)
+
+    if abs(value) >= 1_000_000_000_000:
+        return f"{value / 1_000_000_000_000:.2f} trillion"
+    elif abs(value) >= 1_000_000_000:
+        return f"{value / 1_000_000_000:.2f} billion"
+    elif abs(value) >= 1_000_000:
+        return f"{value / 1_000_000:.2f} million"
+    else:
+        return f"{value:,.2f}"

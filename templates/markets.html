@@ -6,12 +6,11 @@
 
 {% block main %}
     <h1>Top Markets</h1>
-    <hr>
     {% for market in topMarkets %}
-        <h3>{{ market["title"] }}</h3>
-        <h4>Price: {{ market["price"] }}</h4>
-        <a href="/trade?market={{ market['title'] }}">Link</a>
-        <hr>
-        <br>
+        <div class="market-card">
+            <h3>{{ market["title"] }}</h3>
+            <h4>Price: {{ market["price"] }}</h4>
+            <a href="/trade?market={{ market['title'] }}">View Market</a>
+        </div>
     {% endfor %}
 {% endblock %}

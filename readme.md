@@ -11,5 +11,4 @@ Key Components:
 /create - create markets, we check that the markets are indeed not spam by using wikipedia api to make sure the titles are real things/people.
 
 AI USAGE:
-The ai assistant in VS code was used for minor help, but that was negligible. The only major AI usage was with styles.css,
-which is largely AI. Essentially all other code, other than the css, was written by me or was taken from my flask pset in cs50.
+The ai assistant in VS code was used for minor help, but that was negligible. The only major AI usage was with styles.css, which I built from the base, but then used AI to enhance it largely. Essentially all other code, other than the css, was written by me or was taken from my flask pset in cs50.
