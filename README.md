@@ -1,5 +1,5 @@
 # CultureCall
-#### Video Demo:  <URL https://youtu.be/GU2RjYbUsdI>
+#### Video Demo:  <URL https://youtu.be/ztY3vW1EXFw>
 
 #### Information:
 CultureCall is a prediction market app using virtual points (holding no real world value).

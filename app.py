@@ -138,7 +138,8 @@ def refreshOrders(marketId):
         # update liveorders sell side
         # if the seller was selling all of their selling to this person, just delete it from their portfolio.
         if amttoSell <= amttoBuy:
-            if len(db.execute("SELECT * FROM portfolio WHERE marketId = ? AND userId = ?", marketId, sellid)) > 0:
+            checkn = db.execute("SELECT * FROM portfolio WHERE marketId = ? AND userId = ?", marketId, sellid)
+            if len(checkn) > 0 and checkn[0]["sharesCount"] > totalShares:
                 db.execute("UPDATE portfolio SET sharesCount = sharesCount - ? WHERE userId = ? AND marketId = ?", totalShares, sellid, marketId)
             else:
                 db.execute("DELETE FROM portfolio WHERE userId = ? AND marketId = ?", sellid, marketId)
