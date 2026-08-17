@@ -195,7 +195,11 @@ def index():
             transaction["side"] = "Sell"
         else:
             transaction["side"] = "Buy"
-        transaction["market"] = db.execute("SELECT * FROM markets WHERE id = ?", transaction["marketId"])[0]["title"]
+        mkt = db.execute("SELECT * FROM markets WHERE id = ?", transaction["marketId"])
+        if len(mkt) > 0:
+            transaction["market"] = mkt[0]["title"]
+        else:
+            transaction["market"] = "Not found"
     return render_template("index.html", points=pts(balance), portfolio=portfolio, open=open, price=getMarketPrice, pts=pts, mktName=getMarketName, history=history)
 
 @app.route("/cancel", methods=["POST"])
