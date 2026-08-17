@@ -1,2 +1,3 @@
 /flask_session
 /__pycache__
+# normally db would be in gitignore, but its not sensitive so its fine for this pj

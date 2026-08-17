@@ -229,9 +229,10 @@ def login():
         elif not request.form.get("password"):
             return apology("must provide password", 403)
 
+        username = str.lower(request.form.get("username"))
         # Query database for username
         rows = db.execute(
-            "SELECT * FROM users WHERE username = ?", request.form.get("username")
+            "SELECT * FROM users WHERE username = ?", username
         )
 
         # Ensure username exists and password is correct
@@ -242,7 +243,7 @@ def login():
 
         # Remember which user has logged in
         session["user_id"] = rows[0]["id"]
-        app.jinja_env.globals["username"] = request.form.get("username")
+        app.jinja_env.globals["username"] = username
 
         # Redirect user to home page
         return redirect("/")
@@ -261,10 +262,10 @@ def register():
             return apology("Password incorrectly entered or not entered at all", 400)
         if not request.form.get("username"):
             return apology("Please fill out all fields.", 400)
-        if len(db.execute("SELECT username FROM users WHERE username = ?", request.form.get("username"))) > 0:
+        username = str.lower(request.form.get("username"))
+        if len(db.execute("SELECT username FROM users WHERE username = ?", username)) > 0:
             return apology("Username already taken", 400)
-        db.execute("INSERT INTO users (username, hash) VALUES (?, ?)", request.form.get(
-            "username"), generate_password_hash(request.form.get("password")))
+        db.execute("INSERT INTO users (username, hash) VALUES (?, ?)", username, generate_password_hash(request.form.get("password")))
     return redirect("/")
 
 @app.route("/autocomplete")
@@ -435,3 +436,7 @@ def markets():
 @app.route("/about")
 def about():
     return render_template("about.html")
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8090)
